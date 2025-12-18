@@ -8,19 +8,61 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsdiff/5.1.0/diff.min.js"></script>
     
     <style>
-        /* --- CSS STYLES --- */
+        /* --- GLOBAL & RESET --- */
+        * { box-sizing: border-box; }
+
+        /* --- 1. CUSTOM SCROLLBARS (The Fix) --- */
+        /* Works on Chrome, Edge, Safari */
+        ::-webkit-scrollbar {
+            width: 8px;  /* Thin vertical scrollbar */
+            height: 8px; /* Thin horizontal scrollbar */
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent; /* See-through track */
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background-color: rgba(255, 255, 255, 0.1); /* Very faint grey */
+            border-radius: 4px; /* Rounded pill shape */
+            border: 2px solid transparent; /* Padding around scrollbar */
+            background-clip: content-box;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(255, 255, 255, 0.3); /* Brighter on hover */
+        }
+
+        ::-webkit-scrollbar-corner {
+            background: transparent;
+        }
+
+        /* Firefox Support */
+        * {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+        }
+
+        /* --- THEME --- */
         :root {
             --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
-            --glass-bg: rgba(255, 255, 255, 0.05);
-            --glass-border: rgba(255, 255, 255, 0.1);
+            --glass-bg: rgba(20, 20, 25, 0.95);
+            --glass-border: rgba(255, 255, 255, 0.08);
             --primary: #818cf8;
             --primary-hover: #6366f1;
-            --text-main: #f8fafc;
+            --text-main: #e2e8f0;
             --text-muted: #94a3b8;
-            --success: #4ade80;
-            --danger: #f87171;
+            
+            /* VS Code Theme Colors */
+            --editor-bg: #1e1e1e;
+            --diff-add-bg: rgba(46, 160, 67, 0.2);
+            --diff-rem-bg: rgba(248, 81, 73, 0.2);
+            --gutter-bg: #252526;
+            --gutter-text: #858585;
+            
             --font-ui: 'Inter', sans-serif;
             --font-code: 'JetBrains Mono', monospace;
         }
@@ -34,22 +76,20 @@
             display: flex;
             flex-direction: column;
             align-items: center;
+            padding-bottom: 50px;
+            overflow-x: hidden;
         }
 
         .app-container {
-            max-width: 1200px;
-            width: 90%;
+            max-width: 1400px;
+            width: 95%;
             padding: 2rem 0;
             animation: fadeIn 0.8s ease-out;
         }
 
-        .header {
-            text-align: center;
-            margin-bottom: 2.5rem;
-        }
-
+        .header { text-align: center; margin-bottom: 2.5rem; }
         .title {
-            font-size: 2.8rem;
+            font-size: 2.5rem;
             font-weight: 800;
             background: linear-gradient(to right, #818cf8, #c084fc);
             -webkit-background-clip: text;
@@ -57,40 +97,30 @@
             margin: 0;
             letter-spacing: -1px;
         }
+        .subtitle { color: var(--text-muted); margin-top: 10px; font-size: 1.1rem; }
 
-        .subtitle {
-            color: var(--text-muted);
-            margin-top: 10px;
-            font-size: 1.1rem;
-        }
-
+        /* --- LAYOUT --- */
         .main-grid {
             display: grid;
             grid-template-columns: 1fr;
-            gap: 2rem;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
         }
 
-        @media (min-width: 768px) {
-            .main-grid { grid-template-columns: 1fr 1fr; }
-        }
+        @media (min-width: 900px) { .main-grid { grid-template-columns: 1fr 1fr; } }
 
+        /* --- CARDS --- */
         .card {
             background: var(--glass-bg);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
             border: 1px solid var(--glass-border);
-            border-radius: 16px;
+            border-radius: 12px;
             padding: 1.5rem;
             display: flex;
             flex-direction: column;
-            height: 600px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-            transition: transform 0.3s ease, border-color 0.3s ease;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            border-color: var(--primary);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            /* Dynamic Height Sizing */
+            height: 600px; 
+            overflow: hidden; /* Hide outer scrollbars */
         }
 
         .card-header {
@@ -100,158 +130,153 @@
             margin-bottom: 1rem;
             color: var(--primary);
             font-weight: 600;
-            font-size: 1.1rem;
+            font-size: 1rem;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 1px;
+            flex-shrink: 0; 
         }
 
+        /* --- INPUT EDITOR --- */
         .code-editor {
             flex: 1;
-            background: rgba(0, 0, 0, 0.3);
+            background: var(--editor-bg);
             border: 1px solid var(--glass-border);
-            border-radius: 8px;
-            color: #e2e8f0;
+            border-radius: 6px;
+            color: #d4d4d4;
             font-family: var(--font-code);
             padding: 1rem;
             font-size: 14px;
             resize: none;
             outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
+            line-height: 1.5;
+            transition: border-color 0.2s;
+            /* Scroll Handling */
+            white-space: pre;
+            overflow: auto; 
+            width: 100%;
         }
-
-        .code-editor:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.15);
-        }
+        .code-editor:focus { border-color: var(--primary); }
 
         .analyze-btn {
             margin-top: 1.5rem;
             background: linear-gradient(135deg, var(--primary), var(--primary-hover));
             color: white;
             border: none;
-            padding: 14px;
-            border-radius: 8px;
+            padding: 12px;
+            border-radius: 6px;
             font-weight: 600;
             cursor: pointer;
             font-size: 1rem;
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: all 0.2s;
-            box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+            transition: transform 0.2s;
+            width: 100%;
+            flex-shrink: 0;
         }
+        .analyze-btn:hover:not(:disabled) { transform: translateY(-2px); }
+        .analyze-btn:disabled { opacity: 0.7; cursor: wait; }
 
-        .analyze-btn:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4);
-        }
-
-        .analyze-btn:disabled {
-            background: #475569;
-            cursor: wait;
-            opacity: 0.8;
-        }
-
+        /* --- OUTPUT MARKDOWN --- */
         .markdown-output {
             flex: 1;
-            background: rgba(0, 0, 0, 0.2);
-            border-radius: 8px;
-            padding: 1.5rem;
-            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            border-radius: 6px;
+            padding: 1rem;
+            overflow: auto; /* Uses custom scrollbar */
             font-size: 15px;
             line-height: 1.6;
-            overflow-wrap: break-word;
-        }
-
-        /* --- MARKDOWN STYLING FIXES --- */
-        .markdown-output h1, .markdown-output h2, .markdown-output h3 {
-            color: #fff;
-            margin-top: 1.5rem;
-            border-bottom: 1px solid var(--glass-border);
-            padding-bottom: 0.5rem;
-        }
-        .markdown-output p { color: #cbd5e1; }
-        .markdown-output strong { color: var(--success); }
-        .markdown-output pre {
-            background: #0f172a;
-            padding: 1rem;
-            border-radius: 8px;
-            overflow-x: auto;
-            border: 1px solid var(--glass-border);
-            margin: 1rem 0;
-        }
-        .markdown-output code { font-family: var(--font-code); font-size: 0.9em; }
-        .markdown-output p code, .markdown-output li code, .markdown-output td code {
-            background: rgba(255, 255, 255, 0.1);
-            padding: 2px 6px;
-            border-radius: 4px;
-            color: #fca5a5;
-        }
-
-        /* --- TABLE FIXES --- */
-        .markdown-output table {
-            width: 100%;
-            border-collapse: collapse;
-            margin: 1.5rem 0;
-            display: block;
-            overflow-x: auto;
-            white-space: nowrap;
-            border-radius: 8px;
+            color: #d4d4d4;
             border: 1px solid var(--glass-border);
         }
-        .markdown-output th, .markdown-output td {
-            padding: 12px 15px;
-            border-bottom: 1px solid var(--glass-border);
-            text-align: left;
-            color: var(--text-main);
-        }
-        .markdown-output th {
-            background: rgba(255, 255, 255, 0.08);
-            color: var(--primary);
-            font-weight: 600;
-        }
-        .markdown-output tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
-        .markdown-output tr:hover { background: rgba(255, 255, 255, 0.05); }
-
-        /* --- YOUTUBE EMBED STYLING --- */
-        .video-container {
-            position: relative;
-            width: 100%;
-            padding-bottom: 56.25%; /* 16:9 Aspect Ratio */
-            height: 0;
-            overflow: hidden;
-            border-radius: 8px;
-            margin-top: 15px;
-            margin-bottom: 15px;
+        .markdown-output h1, .markdown-output h2 { color: #fff; border-bottom: 1px solid var(--glass-border); padding-bottom: 0.5rem; margin-top: 1.5rem; }
+        .markdown-output strong { color: #4ade80; }
+        .markdown-output code { font-family: var(--font-code); background: rgba(255,255,255,0.1); padding: 2px 5px; border-radius: 4px; color: #ffadad; }
+        .markdown-output pre { 
+            background: #0d1117; 
+            padding: 1rem; 
+            border-radius: 6px; 
+            overflow-x: auto; 
             border: 1px solid var(--glass-border);
-            background: #000;
-        }
-        .video-container iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
         }
 
-        /* Loader */
-        .loader {
+        /* --- COMPARISON SECTION --- */
+        .diff-card {
+            width: 100%;
             display: none;
-            width: 20px;
-            height: 20px;
-            border: 3px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: #fff;
-            animation: spin 1s ease-in-out infinite;
+            flex-direction: column;
+            height: auto;
+            max-width: 100%;
         }
 
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .diff-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: var(--editor-bg);
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            font-family: var(--font-code);
+            font-size: 13px;
+            overflow: hidden;
+            /* Container Scroll */
+            max-height: 600px;
+            overflow-y: auto;
+        }
+
+        .diff-pane {
+            /* Use custom scrollbar for horizontal code scrolling */
+            overflow-x: auto; 
+            min-width: 0;
+        }
+        .diff-pane:first-child { border-right: 1px solid #333; }
+
+        .diff-header {
+            position: sticky;
+            top: 0;
+            background: #252526;
+            padding: 8px 15px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px solid #333;
+            z-index: 10;
+        }
+        .diff-header.original { color: #f87171; border-left: 3px solid #f87171; }
+        .diff-header.fixed { color: #4ade80; border-left: 3px solid #4ade80; }
+
+        .code-line {
+            display: flex;
+            line-height: 1.5;
+            min-height: 20px;
+        }
+        .code-line:hover { background-color: rgba(255,255,255,0.05); }
+
+        .line-number {
+            width: 40px;
+            text-align: right;
+            padding-right: 12px;
+            color: var(--gutter-text);
+            background: var(--gutter-bg);
+            user-select: none;
+            flex-shrink: 0;
+            border-right: 1px solid #333;
+        }
+
+        .line-content {
+            padding-left: 10px;
+            white-space: pre; 
+            color: #d4d4d4;
+            flex: 1;
+        }
+
+        .diff-removed { background-color: var(--diff-rem-bg); }
+        .diff-removed .line-number { opacity: 0.7; }
+        .diff-added { background-color: var(--diff-add-bg); }
+        .diff-added .line-number { color: #cce7cf; }
+
+        .loader { display: none; width: 20px; height: 20px; border: 3px solid rgba(255, 255, 255, 0.3); border-radius: 50%; border-top-color: #fff; animation: spin 1s infinite linear; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
-        ::-webkit-scrollbar { width: 8px; height: 8px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.2); border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.3); }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -259,16 +284,13 @@
     <div class="app-container">
         <header class="header">
             <h1 class="title">AI Code Reviewer</h1>
-            <p class="subtitle">Instant feedback & fixes powered by AI</p>
+            <p class="subtitle">DeepSeek Powered • VS Code Style Diff</p>
         </header>
 
         <div class="main-grid">
-            <div class="card input-card">
-                <div class="card-header">
-                    <span class="icon">📝</span>
-                    <span>Input Code</span>
-                </div>
-                <textarea id="codeInput" class="code-editor" placeholder="// Paste your C++, Python, or JS code here..." spellcheck="false"></textarea>
+            <div class="card">
+                <div class="card-header"><span>📝 Input Code</span></div>
+                <textarea id="codeInput" class="code-editor" placeholder="// Paste your code here..." spellcheck="false"></textarea>
                 
                 <button id="btn" onclick="analyzeCode()" class="analyze-btn">
                     <span id="btnText">✨ Analyze Code</span>
@@ -276,83 +298,134 @@
                 </button>
             </div>
 
-            <div class="card output-card">
-                <div class="card-header">
-                    <span class="icon">🤖</span>
-                    <span>AI Feedback</span>
-                </div>
+            <div class="card">
+                <div class="card-header"><span>🤖 AI Analysis</span></div>
                 <div id="output" class="markdown-output">Results will appear here...</div>
+            </div>
+        </div>
+
+        <div id="diffCard" class="card diff-card">
+            <div class="card-header"><span>⚖️ Code Comparison (Original vs. Fixed)</span></div>
+            <div class="diff-container">
+                <div class="diff-pane">
+                    <div class="diff-header original">Original</div>
+                    <div id="originalOutput"></div>
+                </div>
+                <div class="diff-pane">
+                    <div class="diff-header fixed">Suggested Fix</div>
+                    <div id="fixedOutput"></div>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
-        /* --- JAVASCRIPT LOGIC --- */
         async function analyzeCode() {
             const codeInput = document.getElementById('codeInput');
             const btn = document.getElementById('btn');
             const btnText = document.getElementById('btnText');
             const loader = document.getElementById('loader');
             const output = document.getElementById('output');
+            const diffCard = document.getElementById('diffCard');
             const code = codeInput.value;
 
             if (!code.trim()) { alert("Please enter some code first."); return; }
 
-            // UI Loading State
             btn.disabled = true;
             btnText.style.display = 'none';
             loader.style.display = 'block';
-            output.innerHTML = '<p style="color: #94a3b8; font-style: italic; text-align: center; margin-top: 25%;">Analyzing your code logic...</p>';
+            output.innerHTML = '<p style="color: #94a3b8; font-style: italic; text-align: center; margin-top: 25%;">Analyzing logic and fixing bugs...</p>';
+            diffCard.style.display = 'none';
 
             try {
-                // Fetch from Backend
                 const response = await fetch('/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code: code })
                 });
 
+                if(!response.ok) throw new Error("Backend Error " + response.status);
+
                 const data = await response.json();
 
-                if (data.result) {
-                    // 1. Convert Markdown to HTML
-                    output.innerHTML = marked.parse(data.result);
-
-                    // 2. Scan HTML for YouTube Links and Embed Them
-                    const links = output.getElementsByTagName('a');
+                const explanation = data.explanation || data.result;
+                if (explanation) {
+                    output.innerHTML = marked.parse(explanation);
                     
-                    // Convert collection to array to avoid live-update issues while modifying DOM
+                    // Video Embed Logic
+                    const links = output.getElementsByTagName('a');
                     Array.from(links).forEach(link => {
                         const url = link.href;
-                        // Regex to capture video ID from standard or short YouTube URLs
                         const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
-
                         if (match && match[1]) {
                             const videoId = match[1];
-
-                            // Create the responsive iframe container
                             const videoDiv = document.createElement('div');
-                            videoDiv.className = 'video-container';
-                            videoDiv.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
-
-                            // Insert video immediately after the link (or its parent block)
-                            if (link.parentNode) {
-                                link.parentNode.insertBefore(videoDiv, link.nextSibling);
-                            }
+                            videoDiv.style.cssText = "position: relative; width: 100%; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; margin: 15px 0; border: 1px solid rgba(255,255,255,0.1); background: #000;";
+                            videoDiv.innerHTML = `<iframe src="https://www.youtube.com/embed/${videoId}" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" frameborder="0" allowfullscreen></iframe>`;
+                            if (link.parentNode) link.parentNode.insertBefore(videoDiv, link.nextSibling);
                         }
                     });
 
                 } else {
-                    output.innerHTML = '<p style="color: var(--danger)">Error: No response from AI.</p>';
+                    output.innerHTML = '<p style="color: #f87171">No explanation returned.</p>';
                 }
+
+                const fixedCode = data.fixedCode || "";
+                
+                if (fixedCode && fixedCode !== code) {
+                    renderDiff(code, fixedCode);
+                    diffCard.style.display = 'flex';
+                    diffCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                } else {
+                    diffCard.style.display = 'none';
+                }
+
             } catch (error) {
                 console.error(error);
-                output.innerHTML = `<p style="color: var(--danger)"><strong>Error:</strong> ${error.message}</p>`;
+                output.innerHTML = `<p style="color: #f87171"><strong>Error:</strong> ${error.message}</p>`;
             } finally {
                 btn.disabled = false;
                 btnText.style.display = 'block';
                 loader.style.display = 'none';
             }
+        }
+
+        function renderDiff(original, fixed) {
+            const diff = Diff.diffLines(original, fixed);
+            let leftHTML = "", rightHTML = "";
+            let leftCount = 1, rightCount = 1;
+
+            diff.forEach(part => {
+                const lines = part.value.split('\n');
+                if (lines[lines.length - 1] === '') lines.pop(); 
+
+                lines.forEach(line => {
+                    if (part.removed) {
+                        leftHTML += createLine(leftCount++, line, 'diff-removed');
+                        rightHTML += createLine('', '', 'empty-line');
+                    } else if (part.added) {
+                        leftHTML += createLine('', '', 'empty-line');
+                        rightHTML += createLine(rightCount++, line, 'diff-added');
+                    } else {
+                        leftHTML += createLine(leftCount++, line, '');
+                        rightHTML += createLine(rightCount++, line, '');
+                    }
+                });
+            });
+
+            document.getElementById('originalOutput').innerHTML = leftHTML;
+            document.getElementById('fixedOutput').innerHTML = rightHTML;
+        }
+
+        function createLine(num, content, className) {
+            if (className === 'empty-line') {
+                return `<div class="code-line"><div class="line-number"></div><div class="line-content"></div></div>`;
+            }
+            const safe = content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            return `<div class="code-line ${className}">
+                        <div class="line-number">${num}</div>
+                        <div class="line-content">${safe || ' '}</div>
+                    </div>`;
         }
     </script>
 </body>
