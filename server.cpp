@@ -11,7 +11,7 @@
 
     // --- CONFIGURATION ---
     // PASTE YOUR KEY INSIDE THE QUOTES
-    const std::string RAW_API_KEY = "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"; 
+    const std::string RAW_API_KEY = "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"; 
 
     const std::string OR_HOST = "openrouter.ai";
     const std::string OR_PATH = "/api/v1/chat/completions";
