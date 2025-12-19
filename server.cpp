@@ -11,7 +11,7 @@ using json = nlohmann::json;
 
 // --- CONFIGURATION ---
 // PASTE YOUR KEY INSIDE THE QUOTES
-const std::string RAW_API_KEY = "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"; 
+const std::string RAW_API_KEY = "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"; 
 
 const std::string OR_HOST = "openrouter.ai";
 const std::string OR_PATH = "/api/v1/chat/completions";
